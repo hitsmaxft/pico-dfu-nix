@@ -2,7 +2,7 @@
   description = "A flake for building the bard-cli Go project";
 
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+    nixpkgs.url = "github:NixOS/nixpkgs/release-24.11";
     flake-utils.url = "github:numtide/flake-utils";
   };
 
@@ -10,11 +10,7 @@
     flake-utils.lib.eachDefaultSystem (system:
       let
         pkgs = import nixpkgs { inherit system; };
-        callPackage =
-          pkgs.darwin.apple_sdk_11_0.callPackage or pkgs.callPackage;
+        callPackage = pkgs.callPackage;
         pico-dfu = callPackage ./default.nix { };
-      in {
-        pkgs.currentSystem = system;
-        defaultPackage = pico-dfu;
-      });
+      in { packages.default = pico-dfu; });
 }

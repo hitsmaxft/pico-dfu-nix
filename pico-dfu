@@ -1,4 +1,6 @@
 #!/bin/bash
+set -euo pipefail
+
 SKIP_CONFIRM=0
 
 while getopts ":y" opt; do
@@ -12,15 +14,24 @@ while getopts ":y" opt; do
             ;;
     esac
 done
+
 shift $((OPTIND -1))
 # Ensure the UF2 file is provided as a command-line argument
 if [ -z "$1" ]; then
     echo "Usage: $0 <path_to_uf2_file>"
     exit 1
 fi
+if [ -z "$2" ]; then
+VOLUME_PATH="/Volumes/RPI-RP2"
+fi
 
 UF2_FILE="$1"
-VOLUME_PATH="/Volumes/RPI-RP2"
+
+if [ -z "$2" ]; then
+    VOLUME_PATH="/Volumes/RPI-RP2"
+else
+    VOLUME_PATH="$2"
+fi
 
 # Check if the UF2 file exists
 if [ ! -f "$UF2_FILE" ]; then
@@ -32,7 +43,7 @@ echo "Ensure sudo permission..."
 
 sudo bash -c 'echo "" >/dev/null'
 
-echo "Waiting for volume $VOLUME_PATH to appear..."
+echo "Waiting for volume ${VOLUME_PATH} to appear..."
 
 # Loop until the volume appears
 while [ ! -d "$VOLUME_PATH" ]; do
@@ -40,7 +51,7 @@ while [ ! -d "$VOLUME_PATH" ]; do
 done
 
 # Find which disk the volume belongs to
-while [ ! "$(mount | grep "$VOLUME_PATH" | awk '{print $1}')" ]; do
+while [ ! "$(mount | grep "${VOLUME_PATH}" | awk '{print $1}')" ]; do
     sleep 1
 done
 
@@ -58,7 +69,7 @@ echo "The volume $VOLUME_PATH is associated with $DISK_ID."
 sleep 2
 
 # Define the final shell command
-FINAL_COMMAND="sudo bash -c 'umount $VOLUME_PATH && cat $UF2_FILE > $DISK_ID'"
+FINAL_COMMAND="sudo bash -c 'umount ${VOLUME_PATH} && cat $UF2_FILE > $DISK_ID'"
 
 # Show the final command to the user and ask for confirmation
 echo "The following command will be executed:"
@@ -72,7 +83,7 @@ fi
 
 if [[ "$CONFIRM" =~ ^[Yy]$ ]]; then
     echo "Running the command: $FINAL_COMMAND"
-    if [[ $(sudo bash -c "umount $VOLUME_PATH && cat $UF2_FILE > $DISK_ID") -eq 0 ]]; then
+    if [[ $(sudo bash -c "umount ${VOLUME_PATH} && cat $UF2_FILE > $DISK_ID") -eq 0 ]]; then
         echo "Command executed successfully."
     else
         echo "Command failed."
@@ -80,4 +91,3 @@ if [[ "$CONFIRM" =~ ^[Yy]$ ]]; then
 else
     echo "Operation cancelled by the user."
 fi
-
