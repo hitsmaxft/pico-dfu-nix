@@ -16,28 +16,51 @@ while getopts ":y" opt; do
 done
 
 shift $((OPTIND -1))
+
 # Ensure the UF2 file is provided as a command-line argument
 if [ -z "$1" ]; then
     echo "Usage: $0 <path_to_uf2_file>"
     exit 1
 fi
-if [ -z "$2" ]; then
-VOLUME_PATH="/Volumes/RPI-RP2"
-fi
 
 UF2_FILE="$1"
-
-if [ -z "$2" ]; then
-    VOLUME_PATH="/Volumes/RPI-RP2"
-else
-    VOLUME_PATH="$2"
-fi
+shift
 
 # Check if the UF2 file exists
 if [ ! -f "$UF2_FILE" ]; then
     echo "The file $UF2_FILE does not exist."
     exit 1
 fi
+
+VOLUME_PATH=""
+# Automatically detect the target volume
+if [ $# -ge 1 ]; then
+    VOLUME_PATH="$1"
+    shift
+fi
+
+while [ -z "$VOLUME_PATH" ]; do
+    for dir in /Volumes/*; do
+        if [[ -d "$dir" && "$dir" =~ ^/Volumes/[A-Z0-9-]+$ && -f "$dir/current.uf2" ]]; then
+
+            if [[ $SKIP_CONFIRM -eq 1 ]]; then
+                echo "Detected target volume: $dir. "               
+
+                VOLUME_PATH="$dir"
+                break
+            fi
+            read -r -p "Detected target volume: $dir. Do you want to use this volume? (y/n) " CONFIRM
+            if [[ "$CONFIRM" =~ ^[Yy]$ ]]; then
+                VOLUME_PATH="$dir"
+                break
+            fi
+        fi
+    done
+    if [ -z "$VOLUME_PATH" ]; then
+        echo "No suitable volume detected. Retrying in 1 second..."
+        sleep 1
+    fi
+done
 
 echo "Ensure sudo permission..."
 
@@ -50,12 +73,12 @@ while [ ! -d "$VOLUME_PATH" ]; do
     sleep 1
 done
 
+echo "Volume ${VOLUME_PATH} detected. Sleeping for 3 seconds..."
+sleep 3
 # Find which disk the volume belongs to
 while [ ! "$(mount | grep "${VOLUME_PATH}" | awk '{print $1}')" ]; do
     sleep 1
 done
-
-echo "Volume $VOLUME_PATH detected."
 
 DISK_ID="$(mount | grep "$VOLUME_PATH" | awk '{print $1}')"
 
